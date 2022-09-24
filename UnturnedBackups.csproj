@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <RootNamespace>Pustalorc.Plugins.Backups</RootNamespace>
+        <AssemblyName>Pustalorc.UnturnedBackups</AssemblyName>
+        <TargetFramework>net48</TargetFramework>
+        <LangVersion>10</LangVersion>
+        <Nullable>enable</Nullable>
+        <AssemblyTitle>Unturned Backups</AssemblyTitle>
+        <Product>Unturned Backups</Product>
+        <Copyright>Copyright © Pustalorc 2022</Copyright>
+        <DebugType>none</DebugType>
+        <AssemblyVersion>1.0.0</AssemblyVersion>
+        <FileVersion>1.0.0</FileVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>libs\Assembly-CSharp.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Rocket.API">
+            <HintPath>libs\Rocket.API.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Rocket.Core">
+            <HintPath>libs\Rocket.Core.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>libs\UnityEngine.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>libs\UnityEngine.CoreModule.dll</HintPath>
+            <Private>False</Private>
+            <Aliases>UnityCore</Aliases>
+        </Reference>
+    </ItemGroup>
+</Project>
