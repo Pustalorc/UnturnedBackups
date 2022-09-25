@@ -20,7 +20,9 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
     public Backups()
     {
         BackupWorker = new BackgroundWorker();
-        BackupWorker.DoWork += Backup;
+        BackupWorker.WorkerSupportsCancellation = true;
+        BackupWorker.DoWork += RunBackupWorker;
+        BackupWorker.RunWorkerCompleted += BackupWorkerCompleted;
         BackupFolder = Path.Combine(Directory, "Backups");
     }
 
@@ -28,12 +30,42 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
     {
         BackupDelay = new TimeSpan(0, 0, Configuration.Instance.BackupIntervalMinutes, 0);
         SaveWait = new TimeSpan(0, 0, 0, Configuration.Instance.PreBackupSaveWaitSeconds);
+
+        if (Level.isLoaded)
+            BackupWorker.RunWorkerAsync();
+        else
+            Level.onLevelLoaded += LevelLoaded;
+    }
+
+    protected override void Unload()
+    {
+        Level.onLevelLoaded += LevelLoaded;
+        BackupWorker.CancelAsync();
+    }
+
+    private void LevelLoaded(int level)
+    {
         BackupWorker.RunWorkerAsync();
     }
 
-    private void Backup(object sender, DoWorkEventArgs e)
+    private void RunBackupWorker(object sender, DoWorkEventArgs e)
     {
-        Task.Run(Backup).Wait();
+        while (!e.Cancel)
+            Task.Run(Backup).Wait();
+    }
+
+    // This is REQUIRED in order for background worker to not eat and hide the exceptions.
+    private static void BackupWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+    {
+        switch (e.Error)
+        {
+            case null:
+                return;
+            case AggregateException { InnerException: { } } aggregateException:
+                throw aggregateException.InnerException;
+            default:
+                throw e.Error;
+        }
     }
 
     private async Task Backup()
@@ -52,16 +84,14 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
 
         var backupDirectoryInfo = new DirectoryInfo(BackupFolder);
         foreach (var backupDirectory in backupDirectoryInfo.EnumerateDirectories().Where(backupDirectory =>
-                     !((backupDirectory.CreationTimeUtc - DateTime.UtcNow).TotalDays <
-                       Configuration.Instance.RemoveBackupsOlderThanDays)))
+                     (backupDirectory.CreationTimeUtc - DateTime.UtcNow).TotalDays >=
+                     Configuration.Instance.RemoveBackupsOlderThanDays))
             backupDirectory.Delete(true);
-
-        BackupWorker.RunWorkerAsync();
     }
 
     private static Task BackupLevel(string finalBackupFolder)
     {
-        var levelFolderPath = Path.Combine(ServerSavedata.directory, Provider.serverID, "Level", Level.info.name);
+        var levelFolderPath = ReadWrite.PATH + Path.Combine(ServerSavedata.directory, Provider.serverID, "Level", Level.info.name);
         var levelBackupFolder = Path.Combine(finalBackupFolder, "Level");
         if (!System.IO.Directory.Exists(levelBackupFolder))
             System.IO.Directory.CreateDirectory(levelBackupFolder);
@@ -79,7 +109,7 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
 
     private static Task BackupPlayers(string finalBackupFolder)
     {
-        var playerFolderPath = Path.Combine(ServerSavedata.directory, Provider.serverID, "Players");
+        var playerFolderPath = ReadWrite.PATH + Path.Combine(ServerSavedata.directory, Provider.serverID, "Players");
         var playerBackupFolder = Path.Combine(finalBackupFolder, "Players");
 
         if (!System.IO.Directory.Exists(playerBackupFolder))
