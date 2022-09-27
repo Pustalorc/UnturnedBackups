@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading.Tasks;
 using Rocket.Core.Logging;
@@ -79,14 +80,15 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
 
         await BackupLevel(finalBackupFolder);
         await BackupPlayers(finalBackupFolder);
+        await ZipBackup(BackupFolder, finalBackupFolder, backupFolderName);
 
         Logger.Log($"A new backup has been created. Backup ID: {backupFolderName}.");
 
         var backupDirectoryInfo = new DirectoryInfo(BackupFolder);
-        foreach (var backupDirectory in backupDirectoryInfo.EnumerateDirectories().Where(backupDirectory =>
-                     (backupDirectory.CreationTimeUtc - DateTime.UtcNow).TotalDays >=
+        foreach (var backupFile in backupDirectoryInfo.GetFiles("*.zip").Where(backup =>
+                     (backup.CreationTimeUtc - DateTime.UtcNow).TotalDays >=
                      Configuration.Instance.RemoveBackupsOlderThanDays))
-            backupDirectory.Delete(true);
+            backupFile.Delete();
     }
 
     private static Task BackupLevel(string finalBackupFolder)
@@ -137,6 +139,14 @@ public sealed class Backups : RocketPlugin<BackupsConfiguration>
                 File.Copy(fileToBackup, Path.Combine(backupFolder, fileName));
             }
         }
+
+        return Task.CompletedTask;
+    }
+
+    private static Task ZipBackup(string backupFolder, string finalBackupFolder, string backupFolderName)
+    {
+        ZipFile.CreateFromDirectory(finalBackupFolder, Path.Combine(backupFolder, backupFolderName + ".zip"),
+            CompressionLevel.Optimal, false);
 
         return Task.CompletedTask;
     }
